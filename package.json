@@ -1,0 +1,20 @@
+{
+  "name": "portofolio-monorepo",
+  "private": true,
+  "packageManager": "pnpm@12.23.0",
+  "scripts": {
+    "dev": "pnpm --parallel --filter @portofolio/api --filter @portofolio/web dev",
+    "dev:api": "pnpm --filter @portofolio/api dev",
+    "dev:web": "pnpm --filter @portofolio/web dev",
+    "build": "pnpm --filter @portofolio/shared build && pnpm --filter @portofolio/api build && pnpm --filter @portofolio/web build",
+    "check": "pnpm --filter @portofolio/shared check && pnpm --filter @portofolio/api check && pnpm --filter @portofolio/web check",
+    "test": "pnpm --filter @portofolio/shared test && pnpm --filter @portofolio/api test",
+    "db:generate": "pnpm --filter @portofolio/api db:generate",
+    "db:migrate": "pnpm --filter @portofolio/api db:migrate",
+    "db:push": "pnpm --filter @portofolio/api db:push",
+    "db:seed:admin": "pnpm --filter @portofolio/api db:seed:admin"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

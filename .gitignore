@@ -1,0 +1,30 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Build outputs
+dist/
+build/
+.svelte-kit/
+.vite/
+
+# Local uploaded user media (preserve directory via .gitkeep)
+apps/api/uploads/*
+!apps/api/uploads/.gitkeep
+
+# Logs & OS
+*.log
+.DS_Store
+
+# Impeccable local machine overrides & transient captures
+.impeccable/config.local.json
+.impeccable/review/
+.impeccable/mocks/
+.impeccable/build/
+.impeccable/questions/
+apps/web/.impeccable/live/
