@@ -1,4 +1,12 @@
 import { z } from 'zod';
+import { coverKeySchema, galleryKeySchema } from './media.js';
+
+const optionalCoverKey = z
+  .string()
+  .trim()
+  .nullable()
+  .transform((v) => (v === '' ? null : v))
+  .refine((v) => v === null || coverKeySchema.safeParse(v).success, 'Invalid cover media storage key');
 
 export const projectStatusSchema = z.enum(['draft', 'published']);
 export type ProjectStatus = z.infer<typeof projectStatusSchema>;
@@ -39,8 +47,8 @@ export const projectPayloadSchema = z
     role: z.string().trim().max(120).default(''),
     period: z.string().trim().max(80).default(''),
     techStack: z.array(z.string().trim().min(1).max(60)).max(30).default([]),
-    coverImageKey: z.string().trim().nullable().default(null),
-    galleryImageKeys: z.array(z.string().trim().min(1)).max(20).default([]),
+    coverImageKey: optionalCoverKey.default(null),
+    galleryImageKeys: z.array(galleryKeySchema).max(20).default([]),
     repoUrl: optionalHttpUrl.default(null),
     liveUrl: optionalHttpUrl.default(null),
     demoRoute: optionalDemoRoute.default(null),

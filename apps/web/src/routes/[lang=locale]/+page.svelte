@@ -7,6 +7,7 @@
   import { skillGroups } from '$lib/data/skills';
   import { workHistory } from '$lib/data/work-history';
   import { UI_COPY } from '$lib/i18n/ui-copy';
+  import { toAbsoluteUrl } from '$lib/seo';
   import type { LayoutData } from './$types';
 
   let { data }: { data: LayoutData } = $props();
@@ -61,6 +62,13 @@
       ? `${profile.displayName} — ${roleLine || headline}`
       : copy.footer.builtWith
   );
+  let metaDescription = $derived(bio.replace(/\s+/g, ' ').trim().slice(0, 160));
+  let canonicalUrl = $derived(`${data.siteOrigin}/${data.locale}`);
+  let enUrl = $derived(`${data.siteOrigin}/en`);
+  let idUrl = $derived(`${data.siteOrigin}/id`);
+  let ogImageUrl = $derived(
+    toAbsoluteUrl(data.siteOrigin, featuredProject?.coverImageUrl ?? profile.avatarUrl)
+  );
 
   async function copyEmailAddress() {
     if (!profile.email || typeof navigator === 'undefined' || !navigator.clipboard) return;
@@ -79,7 +87,26 @@
 
 <svelte:head>
   <title>{pageTitle}</title>
-  <meta name="description" content={bio.slice(0, 160)} />
+  <meta name="description" content={metaDescription} />
+  <link rel="canonical" href={canonicalUrl} />
+  <link rel="alternate" hreflang="en" href={enUrl} />
+  <link rel="alternate" hreflang="id" href={idUrl} />
+  <link rel="alternate" hreflang="x-default" href={enUrl} />
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content={pageTitle} />
+  <meta property="og:description" content={metaDescription} />
+  <meta property="og:url" content={canonicalUrl} />
+  <meta property="og:locale" content={data.locale === 'id' ? 'id_ID' : 'en_US'} />
+  <meta property="og:locale:alternate" content={data.locale === 'id' ? 'en_US' : 'id_ID'} />
+  {#if ogImageUrl}
+    <meta property="og:image" content={ogImageUrl} />
+  {/if}
+  <meta name="twitter:card" content={ogImageUrl ? 'summary_large_image' : 'summary'} />
+  <meta name="twitter:title" content={pageTitle} />
+  <meta name="twitter:description" content={metaDescription} />
+  {#if ogImageUrl}
+    <meta name="twitter:image" content={ogImageUrl} />
+  {/if}
 </svelte:head>
 
 <!-- Opening Asymmetric Editorial Spread -->

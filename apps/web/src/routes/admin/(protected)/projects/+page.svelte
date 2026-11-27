@@ -30,6 +30,7 @@
     const target = index + delta;
     if (target < 0 || target >= items.length || busy) return;
 
+    const previous = items;
     const next = [...items];
     const [moved] = next.splice(index, 1);
     if (!moved) return;
@@ -48,6 +49,7 @@
         })
       });
     } catch (err) {
+      items = previous;
       errorMsg = err instanceof Error ? err.message : 'Failed to reorder projects';
     } finally {
       busy = false;

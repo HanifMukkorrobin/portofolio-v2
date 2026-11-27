@@ -21,10 +21,8 @@ apps/api/uploads/*
 *.log
 .DS_Store
 
-# Impeccable local machine overrides & transient captures
-.impeccable/config.local.json
-.impeccable/review/
-.impeccable/mocks/
-.impeccable/build/
-.impeccable/questions/
-apps/web/.impeccable/live/
+# Local AI agent tooling & workspace artifacts (keep public repo clean)
+.agents/
+.codex/
+.impeccable/
+apps/web/.impeccable/

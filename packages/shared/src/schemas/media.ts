@@ -24,14 +24,29 @@ export const MIME_TO_EXT: Record<string, string> = {
   'application/pdf': 'pdf'
 };
 
+export const MEDIA_KEY_REGEX =
+  /^(?:(?:avatar|cover|gallery)\/[a-f0-9-]+\.(?:jpg|png|webp|avif)|cv\/[a-f0-9-]+\.pdf)$/;
+
+export const mediaKeySchema = z
+  .string()
+  .trim()
+  .regex(MEDIA_KEY_REGEX, 'Invalid media storage key');
+
+export function createCategoryMediaKeySchema(category: UploadCategory) {
+  const pattern =
+    category === 'cv'
+      ? /^cv\/[a-f0-9-]+\.pdf$/
+      : new RegExp(`^${category}\\/[a-f0-9-]+\\.(?:jpg|png|webp|avif)$`);
+  return z.string().trim().regex(pattern, `Invalid ${category} media storage key`);
+}
+
+export const avatarKeySchema = createCategoryMediaKeySchema('avatar');
+export const coverKeySchema = createCategoryMediaKeySchema('cover');
+export const galleryKeySchema = createCategoryMediaKeySchema('gallery');
+export const cvKeySchema = createCategoryMediaKeySchema('cv');
+
 export const deleteMediaSchema = z.object({
-  key: z
-    .string()
-    .trim()
-    .regex(
-      /^(avatar|cover|gallery|cv)\/[a-f0-9-]+\.(jpg|png|webp|avif|pdf)$/,
-      'Invalid media storage key'
-    )
+  key: mediaKeySchema
 });
 
 export interface UploadedMedia {

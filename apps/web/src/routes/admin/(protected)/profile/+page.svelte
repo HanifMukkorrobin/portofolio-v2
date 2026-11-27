@@ -67,21 +67,57 @@
     services = services.filter((_, i) => i !== idx);
   }
 
+  const unsavedMediaKeys = new Set<string>();
+
+  function deleteUnsavedMedia(key: string | null) {
+    if (!key || !unsavedMediaKeys.has(key)) return;
+    unsavedMediaKeys.delete(key);
+    void apiRequest('/api/admin/media', {
+      method: 'DELETE',
+      body: JSON.stringify({ key })
+    }).catch(() => {});
+  }
+
   function handleAvatarUploaded(media: UploadedMedia) {
+    deleteUnsavedMedia(avatarKey);
+    unsavedMediaKeys.add(media.key);
     avatarKey = media.key;
     avatarUrl = media.url;
   }
 
+  function handleAvatarRemove() {
+    deleteUnsavedMedia(avatarKey);
+    avatarKey = null;
+    avatarUrl = null;
+  }
+
   function handleCvUploaded(media: UploadedMedia) {
+    deleteUnsavedMedia(cvPdfKey);
+    unsavedMediaKeys.add(media.key);
     cvPdfKey = media.key;
     cvPdfUrl = media.url;
     cvOriginalName = media.originalName;
+  }
+
+  function handleCvRemove() {
+    deleteUnsavedMedia(cvPdfKey);
+    cvPdfKey = null;
+    cvPdfUrl = null;
+    cvOriginalName = null;
   }
 
   async function handleSave(event: SubmitEvent) {
     event.preventDefault();
     errorMsg = '';
     successMsg = '';
+
+    const invalidServiceIdx = services.findIndex((s) => s.titleEn.trim().length === 0);
+    if (invalidServiceIdx !== -1) {
+      activeLocale = 'en';
+      errorMsg = `Service ${String(invalidServiceIdx + 1).padStart(2, '0')} requires an English title (EN) before saving, or remove the empty item.`;
+      return;
+    }
+
     saving = true;
 
     const payload: UpdateProfileInput = {
@@ -95,7 +131,12 @@
       isAvailable,
       availabilityEn: availabilityEn.trim(),
       availabilityId: availabilityId.trim(),
-      services: services.filter((s) => s.titleEn.trim().length > 0),
+      services: services.map((s) => ({
+        titleEn: s.titleEn.trim(),
+        titleId: s.titleId.trim(),
+        descriptionEn: s.descriptionEn.trim(),
+        descriptionId: s.descriptionId.trim()
+      })),
       freelanceCtaEn: freelanceCtaEn.trim(),
       freelanceCtaId: freelanceCtaId.trim(),
       freelanceCtaUrl: freelanceCtaUrl.trim(),
@@ -112,6 +153,7 @@
         method: 'PUT',
         body: JSON.stringify(payload)
       });
+      unsavedMediaKeys.clear();
       services = res.profile.services;
       successMsg = 'Profile settings saved and live.';
     } catch (err) {
@@ -172,7 +214,7 @@
             id="roleEn"
             type="text"
             bind:value={roleEn}
-            placeholder="e.g. Senior Frontend & Mobile Engineer"
+            placeholder="e.g. Frontend & Mobile Engineer"
             class="mt-1.5 w-full border border-[var(--border-hairline)] bg-[var(--bg-page)] px-3.5 py-2.5 text-sm"
           />
           <p class="mt-1 text-xs text-[var(--ink-muted)]">
@@ -218,7 +260,7 @@
               id="availabilityEn"
               type="text"
               bind:value={availabilityEn}
-              placeholder="e.g. Open to senior roles & freelance"
+              placeholder="e.g. Open to full-time roles & freelance"
               class="mt-1.5 w-full border border-[var(--border-hairline)] bg-[var(--bg-page)] px-3.5 py-2.5 text-sm"
             />
           </div>
@@ -464,10 +506,7 @@
         accept="image/jpeg,image/png,image/webp,image/avif"
         currentUrl={avatarUrl}
         onUploaded={handleAvatarUploaded}
-        onRemove={() => {
-          avatarKey = null;
-          avatarUrl = null;
-        }}
+        onRemove={handleAvatarRemove}
       />
 
       <MediaUploader
@@ -477,11 +516,7 @@
         currentUrl={cvPdfUrl}
         currentName={cvOriginalName}
         onUploaded={handleCvUploaded}
-        onRemove={() => {
-          cvPdfKey = null;
-          cvPdfUrl = null;
-          cvOriginalName = null;
-        }}
+        onRemove={handleCvRemove}
       />
     </div>
   </section>

@@ -8,8 +8,8 @@ import type { WorkHistoryItem } from '@portofolio/shared';
  * {
  *   id: 'company-slug',
  *   company: 'Company Name',
- *   roleEn: 'Senior Full-Stack Engineer',
- *   roleId: 'Senior Full-Stack Engineer',
+ *   roleEn: 'Full-Stack Engineer',
+ *   roleId: 'Full-Stack Engineer',
  *   periodEn: '2023 — Present',
  *   periodId: '2023 — Sekarang',
  *   location: 'Jakarta / Remote',

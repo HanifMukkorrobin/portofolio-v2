@@ -22,7 +22,7 @@ export function createAdminProfileRoutes(db: AppDb, storage: StorageAdapter) {
       return c.json({ error: 'Invalid profile payload', details: parsed.error.flatten() }, 400);
     }
 
-    await ensureSiteProfileRow(db);
+    const previous = await ensureSiteProfileRow(db);
 
     const updated = await db
       .update(siteProfile)
@@ -35,6 +35,17 @@ export function createAdminProfileRoutes(db: AppDb, storage: StorageAdapter) {
 
     if (!updated[0]) {
       return c.json({ error: 'Failed to update profile' }, 500);
+    }
+
+    const staleKeys: string[] = [];
+    if (previous.avatarKey && previous.avatarKey !== updated[0].avatarKey) {
+      staleKeys.push(previous.avatarKey);
+    }
+    if (previous.cvPdfKey && previous.cvPdfKey !== updated[0].cvPdfKey) {
+      staleKeys.push(previous.cvPdfKey);
+    }
+    if (staleKeys.length > 0) {
+      await Promise.allSettled(staleKeys.map((key) => storage.delete(key)));
     }
 
     return c.json({ profile: serializeProfile(updated[0], storage) });

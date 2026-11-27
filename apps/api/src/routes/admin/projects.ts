@@ -100,6 +100,12 @@ export function createAdminProjectRoutes(db: AppDb, storage: StorageAdapter) {
       return c.json({ error: 'Invalid project payload', details: parsed.error.flatten() }, 400);
     }
 
+    const existingRows = await db.select().from(projects).where(eq(projects.id, id)).limit(1);
+    const existing = existingRows[0];
+    if (!existing) {
+      return c.json({ error: 'Project not found' }, 404);
+    }
+
     try {
       const updated = await db
         .update(projects)
@@ -109,6 +115,19 @@ export function createAdminProjectRoutes(db: AppDb, storage: StorageAdapter) {
 
       if (!updated[0]) {
         return c.json({ error: 'Project not found' }, 404);
+      }
+
+      const retainedKeys = new Set<string>([
+        ...(updated[0].coverImageKey ? [updated[0].coverImageKey] : []),
+        ...(updated[0].galleryImageKeys ?? [])
+      ]);
+      const previousKeys = [
+        ...(existing.coverImageKey ? [existing.coverImageKey] : []),
+        ...(existing.galleryImageKeys ?? [])
+      ];
+      const staleKeys = previousKeys.filter((key) => !retainedKeys.has(key));
+      if (staleKeys.length > 0) {
+        await Promise.allSettled(staleKeys.map((key) => storage.delete(key)));
       }
 
       return c.json({ project: serializeProject(updated[0], storage) });

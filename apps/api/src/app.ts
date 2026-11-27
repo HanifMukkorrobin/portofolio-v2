@@ -39,7 +39,7 @@ export function createApp({ db, storage, env }: AppDependencies) {
   app.route('/api/auth', createAuthRoutes(db, env));
   app.route('/api', createPublicRoutes(db, storage));
 
-  const requireAdmin = createRequireAdmin(db);
+  const requireAdmin = createRequireAdmin(db, env.SESSION_SECRET);
   app.use('/api/admin/*', requireAdmin);
   app.route('/api/admin/profile', createAdminProfileRoutes(db, storage));
   app.route('/api/admin/projects', createAdminProjectRoutes(db, storage));

@@ -1,4 +1,13 @@
 import { z } from 'zod';
+import { avatarKeySchema, cvKeySchema } from './media.js';
+
+const optionalMediaKey = (schema: z.ZodString) =>
+  z
+    .string()
+    .trim()
+    .nullable()
+    .transform((v) => (v === '' ? null : v))
+    .refine((v) => v === null || schema.safeParse(v).success, 'Invalid media storage key');
 
 const optionalUrl = z
   .string()
@@ -44,8 +53,8 @@ export const updateProfileSchema = z.object({
   email: optionalEmail.default(''),
   githubUrl: optionalUrl.default(''),
   linkedinUrl: optionalUrl.default(''),
-  avatarKey: z.string().trim().nullable().default(null),
-  cvPdfKey: z.string().trim().nullable().default(null),
+  avatarKey: optionalMediaKey(avatarKeySchema).default(null),
+  cvPdfKey: optionalMediaKey(cvKeySchema).default(null),
   cvOriginalName: z.string().trim().max(200).nullable().default(null)
 });
 

@@ -10,10 +10,10 @@ export type AuthEnv = {
   };
 };
 
-export function createRequireAdmin(db: AppDb) {
+export function createRequireAdmin(db: AppDb, sessionSecret: string) {
   return createMiddleware<AuthEnv>(async (c, next) => {
     const token = getCookie(c, SESSION_COOKIE_NAME);
-    const user = await getSessionUser(db, token);
+    const user = await getSessionUser(db, token, sessionSecret);
 
     if (!user) {
       return c.json({ error: 'Unauthorized' }, 401);

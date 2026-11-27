@@ -4,6 +4,7 @@
   import StatusBadge from '$lib/components/ui/StatusBadge.svelte';
   import { UI_COPY } from '$lib/i18n/ui-copy';
   import { renderSafeMarkdown } from '$lib/markdown';
+  import { toAbsoluteUrl } from '$lib/seo';
   import type { PageData } from './$types';
 
   let { data }: { data: PageData } = $props();
@@ -27,11 +28,38 @@
       ? data.projects[currentIndex + 1]
       : null
   );
+  let pageTitle = $derived(`${title} — ${data.profile.displayName || copy.footer.builtWith}`);
+  let metaDescription = $derived(summary.replace(/\s+/g, ' ').trim().slice(0, 160));
+  let canonicalUrl = $derived(`${data.siteOrigin}/${data.locale}/projects/${project.slug}`);
+  let enUrl = $derived(`${data.siteOrigin}/en/projects/${project.slug}`);
+  let idUrl = $derived(`${data.siteOrigin}/id/projects/${project.slug}`);
+  let ogImageUrl = $derived(
+    toAbsoluteUrl(data.siteOrigin, project.coverImageUrl ?? data.profile.avatarUrl)
+  );
 </script>
 
 <svelte:head>
-  <title>{title} — {data.profile.displayName || copy.footer.builtWith}</title>
-  <meta name="description" content={summary} />
+  <title>{pageTitle}</title>
+  <meta name="description" content={metaDescription} />
+  <link rel="canonical" href={canonicalUrl} />
+  <link rel="alternate" hreflang="en" href={enUrl} />
+  <link rel="alternate" hreflang="id" href={idUrl} />
+  <link rel="alternate" hreflang="x-default" href={enUrl} />
+  <meta property="og:type" content="article" />
+  <meta property="og:title" content={pageTitle} />
+  <meta property="og:description" content={metaDescription} />
+  <meta property="og:url" content={canonicalUrl} />
+  <meta property="og:locale" content={data.locale === 'id' ? 'id_ID' : 'en_US'} />
+  <meta property="og:locale:alternate" content={data.locale === 'id' ? 'en_US' : 'id_ID'} />
+  {#if ogImageUrl}
+    <meta property="og:image" content={ogImageUrl} />
+  {/if}
+  <meta name="twitter:card" content={ogImageUrl ? 'summary_large_image' : 'summary'} />
+  <meta name="twitter:title" content={pageTitle} />
+  <meta name="twitter:description" content={metaDescription} />
+  {#if ogImageUrl}
+    <meta name="twitter:image" content={ogImageUrl} />
+  {/if}
 </svelte:head>
 
 <article>

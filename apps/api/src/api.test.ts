@@ -3,11 +3,15 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { ProjectRow } from './db/schema.js';
-import { hashPassword, verifyPassword } from './lib/password.js';
+import { DEFAULT_DEV_SESSION_SECRET, loadEnv } from './env.js';
 import { optimizeUploadedImage } from './lib/image-optimize.js';
+import { detectMediaMimeType, matchesDeclaredMimeType } from './lib/media-validation.js';
+import { hashPassword, verifyPassword } from './lib/password.js';
 import { createRateLimiter } from './lib/rate-limit.js';
 import { serializeProject } from './lib/serializers.js';
+import { hashSessionToken } from './lib/session.js';
 import { LocalDiskStorageAdapter } from './lib/storage/local.js';
+import { createAdminMediaRoutes } from './routes/admin/media.js';
 
 describe('password hashing (scrypt)', () => {
   it('hashes and verifies matching passwords while rejecting mismatches', async () => {
@@ -111,6 +115,81 @@ describe('login rate limiter', () => {
     limiter.reset('ip-1');
     expect(limiter.consume('ip-1').allowed).toBe(true);
   });
+
+  it('prunes expired buckets and caps memory growth', () => {
+    let clock = 1_000;
+    const limiter = createRateLimiter(2, 10_000, { maxEntries: 3, now: () => clock });
+    limiter.consume('ip-a');
+    limiter.consume('ip-b');
+    expect(limiter.size()).toBe(2);
+
+    clock += 15_000;
+    limiter.consume('ip-c');
+    expect(limiter.size()).toBe(1);
+
+    limiter.consume('ip-d');
+    limiter.consume('ip-e');
+    limiter.consume('ip-f');
+    expect(limiter.size()).toBeLessThanOrEqual(3);
+  });
+});
+
+describe('session token HMAC & env security', () => {
+  it('hashes session tokens with HMAC keyed by SESSION_SECRET', () => {
+    const h1 = hashSessionToken('sample-token', 'secret-a-1234567890');
+    const h2 = hashSessionToken('sample-token', 'secret-b-1234567890');
+    expect(h1).toHaveLength(64);
+    expect(h1).not.toBe(h2);
+  });
+
+  it('rejects default insecure SESSION_SECRET in production', () => {
+    expect(() =>
+      loadEnv({
+        NODE_ENV: 'production',
+        DATABASE_URL: 'postgresql://localhost/test',
+        SESSION_SECRET: DEFAULT_DEV_SESSION_SECRET
+      })
+    ).toThrow();
+
+    const prodEnv = loadEnv({
+      NODE_ENV: 'production',
+      DATABASE_URL: 'postgresql://localhost/test',
+      SESSION_SECRET: 'a-very-strong-production-secret-key'
+    });
+    expect(prodEnv.TRUST_PROXY).toBe(false);
+  });
+});
+
+describe('media magic-byte validation', () => {
+  it('detects supported image and PDF signatures and rejects spoofed content', () => {
+    const pngHeader = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00]);
+    const pdfHeader = new TextEncoder().encode('%PDF-1.7\n...');
+    const htmlPayload = new TextEncoder().encode('<script>alert(1)</script>');
+
+    expect(detectMediaMimeType(pngHeader)).toBe('image/png');
+    expect(detectMediaMimeType(pdfHeader)).toBe('application/pdf');
+    expect(detectMediaMimeType(htmlPayload)).toBeNull();
+    expect(matchesDeclaredMimeType(htmlPayload, 'image/png')).toBe(false);
+    expect(matchesDeclaredMimeType(pdfHeader, 'image/jpeg')).toBe(false);
+    expect(matchesDeclaredMimeType(pdfHeader, 'application/pdf')).toBe(true);
+  });
+
+  it('rejects spoofed uploads on /upload endpoint with 400', async () => {
+    const tempDir = await mkdtemp(join(tmpdir(), 'portofolio-upload-'));
+    try {
+      const storage = new LocalDiskStorageAdapter(tempDir);
+      const app = createAdminMediaRoutes(storage);
+
+      const form = new FormData();
+      form.set('category', 'avatar');
+      form.set('file', new File(['<html>not a png</html>'], 'evil.png', { type: 'image/png' }));
+
+      const res = await app.request('/upload', { method: 'POST', body: form });
+      expect(res.status).toBe(400);
+    } finally {
+      await rm(tempDir, { recursive: true, force: true });
+    }
+  });
 });
 
 describe('optimizeUploadedImage', () => {
@@ -132,5 +211,16 @@ describe('optimizeUploadedImage', () => {
     expect(meta.width).toBeLessThanOrEqual(960);
     expect(meta.height).toBeLessThanOrEqual(960);
     expect(optimized.byteLength).toBeLessThan(oversized.byteLength);
+  });
+
+  it('throws on corrupted image bytes instead of returning raw payload silently', async () => {
+    const fakeJpeg = new Uint8Array([0xff, 0xd8, 0xff, 0x00, 0x01, 0x02]);
+    await expect(
+      optimizeUploadedImage({
+        body: fakeJpeg,
+        mimeType: 'image/jpeg',
+        category: 'avatar'
+      })
+    ).rejects.toThrow();
   });
 });

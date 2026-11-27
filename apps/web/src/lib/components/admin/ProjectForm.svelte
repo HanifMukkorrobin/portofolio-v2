@@ -75,21 +75,38 @@
       .replace(/-+/g, '-');
   }
 
+  const unsavedMediaKeys = new Set<string>();
+
+  function deleteUnsavedMedia(key: string | null) {
+    if (!key || !unsavedMediaKeys.has(key)) return;
+    unsavedMediaKeys.delete(key);
+    void apiRequest('/api/admin/media', {
+      method: 'DELETE',
+      body: JSON.stringify({ key })
+    }).catch(() => {});
+  }
+
   function handleCoverUploaded(media: UploadedMedia) {
+    deleteUnsavedMedia(coverImageKey);
+    unsavedMediaKeys.add(media.key);
     coverImageKey = media.key;
     coverImageUrl = media.url;
   }
 
+  function handleCoverRemove() {
+    deleteUnsavedMedia(coverImageKey);
+    coverImageKey = null;
+    coverImageUrl = null;
+  }
+
   function handleGalleryUploaded(media: UploadedMedia) {
+    unsavedMediaKeys.add(media.key);
     galleryItems = [...galleryItems, { key: media.key, url: media.url }];
   }
 
-  async function removeGalleryItem(key: string) {
+  function removeGalleryItem(key: string) {
     galleryItems = galleryItems.filter((item) => item.key !== key);
-    await apiRequest('/api/admin/media', {
-      method: 'DELETE',
-      body: JSON.stringify({ key })
-    }).catch(() => {});
+    deleteUnsavedMedia(key);
   }
 
   async function handleSubmit(event: SubmitEvent) {
@@ -133,12 +150,14 @@
           method: 'POST',
           body: JSON.stringify(payload)
         });
+        unsavedMediaKeys.clear();
         await goto(`/admin/projects/${res.project.id}`);
       } else if (initial) {
         await apiRequest<{ project: ProjectRecord }>(`/api/admin/projects/${initial.id}`, {
           method: 'PUT',
           body: JSON.stringify(payload)
         });
+        unsavedMediaKeys.clear();
         successMsg = 'Project saved.';
       }
     } catch (err) {
@@ -423,10 +442,7 @@
         accept="image/jpeg,image/png,image/webp,image/avif"
         currentUrl={coverImageUrl}
         onUploaded={handleCoverUploaded}
-        onRemove={() => {
-          coverImageKey = null;
-          coverImageUrl = null;
-        }}
+        onRemove={handleCoverRemove}
       />
 
       <MediaUploader

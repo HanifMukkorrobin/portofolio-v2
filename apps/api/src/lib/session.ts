@@ -1,4 +1,4 @@
-import { createHash, randomBytes } from 'node:crypto';
+import { createHmac, randomBytes } from 'node:crypto';
 import { and, eq, gt } from 'drizzle-orm';
 import type { AdminUser } from '@portofolio/shared';
 import type { AppDb } from '../db/index.js';
@@ -11,13 +11,17 @@ export function generateSessionToken(): string {
   return randomBytes(32).toString('base64url');
 }
 
-export function hashSessionToken(token: string): string {
-  return createHash('sha256').update(token).digest('hex');
+export function hashSessionToken(token: string, secret: string): string {
+  return createHmac('sha256', secret).update(token).digest('hex');
 }
 
-export async function createSession(db: AppDb, userId: string): Promise<{ token: string; expiresAt: Date }> {
+export async function createSession(
+  db: AppDb,
+  userId: string,
+  secret: string
+): Promise<{ token: string; expiresAt: Date }> {
   const token = generateSessionToken();
-  const tokenHash = hashSessionToken(token);
+  const tokenHash = hashSessionToken(token, secret);
   const expiresAt = new Date(Date.now() + SESSION_TTL_MS);
 
   await db.insert(sessions).values({
@@ -29,9 +33,13 @@ export async function createSession(db: AppDb, userId: string): Promise<{ token:
   return { token, expiresAt };
 }
 
-export async function getSessionUser(db: AppDb, token: string | undefined): Promise<AdminUser | null> {
+export async function getSessionUser(
+  db: AppDb,
+  token: string | undefined,
+  secret: string
+): Promise<AdminUser | null> {
   if (!token) return null;
-  const tokenHash = hashSessionToken(token);
+  const tokenHash = hashSessionToken(token, secret);
 
   const rows = await db
     .select({
@@ -46,8 +54,12 @@ export async function getSessionUser(db: AppDb, token: string | undefined): Prom
   return rows[0] ?? null;
 }
 
-export async function revokeSession(db: AppDb, token: string | undefined): Promise<void> {
+export async function revokeSession(
+  db: AppDb,
+  token: string | undefined,
+  secret: string
+): Promise<void> {
   if (!token) return;
-  const tokenHash = hashSessionToken(token);
+  const tokenHash = hashSessionToken(token, secret);
   await db.delete(sessions).where(eq(sessions.tokenHash, tokenHash));
 }

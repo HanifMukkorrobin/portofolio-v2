@@ -9,6 +9,7 @@ import {
 } from '@portofolio/shared';
 import { Hono } from 'hono';
 import { optimizeUploadedImage } from '../../lib/image-optimize.js';
+import { matchesDeclaredMimeType } from '../../lib/media-validation.js';
 import type { StorageAdapter } from '../../lib/storage/types.js';
 import type { AuthEnv } from '../../middleware/auth.js';
 
@@ -52,13 +53,24 @@ export function createAdminMediaRoutes(storage: StorageAdapter) {
     }
 
     const rawBody = new Uint8Array(await file.arrayBuffer());
-    const body = isCv
-      ? rawBody
-      : await optimizeUploadedImage({
+    if (!matchesDeclaredMimeType(rawBody, file.type)) {
+      return c.json({ error: 'File content does not match the declared file type' }, 400);
+    }
+
+    let body: Uint8Array;
+    if (isCv) {
+      body = rawBody;
+    } else {
+      try {
+        body = await optimizeUploadedImage({
           body: rawBody,
           mimeType: file.type,
           category
         });
+      } catch {
+        return c.json({ error: 'Invalid or corrupted image file' }, 400);
+      }
+    }
     const key = await storage.save({
       category,
       body,

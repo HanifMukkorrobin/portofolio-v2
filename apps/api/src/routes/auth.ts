@@ -1,6 +1,7 @@
+import { getConnInfo } from '@hono/node-server/conninfo';
 import { loginSchema } from '@portofolio/shared';
 import { eq } from 'drizzle-orm';
-import { Hono } from 'hono';
+import { Hono, type Context } from 'hono';
 import { deleteCookie, getCookie, setCookie } from 'hono/cookie';
 import type { AppDb } from '../db/index.js';
 import { adminUsers } from '../db/schema.js';
@@ -15,13 +16,29 @@ import {
 } from '../lib/session.js';
 import { createRequireAdmin, type AuthEnv } from '../middleware/auth.js';
 
+function resolveClientIp(c: Context, trustProxy: boolean): string {
+  if (trustProxy) {
+    const forwarded = c.req.header('x-forwarded-for')?.split(',')[0]?.trim();
+    if (forwarded) return forwarded;
+  }
+
+  try {
+    const info = getConnInfo(c);
+    if (info.remote.address) return info.remote.address;
+  } catch {
+    // Non-node runtime or test harness without socket info
+  }
+
+  return 'unknown';
+}
+
 export function createAuthRoutes(db: AppDb, env: ApiEnv) {
   const app = new Hono<AuthEnv>();
-  const requireAdmin = createRequireAdmin(db);
+  const requireAdmin = createRequireAdmin(db, env.SESSION_SECRET);
   const loginLimiter = createRateLimiter(10, 15 * 60 * 1000);
 
   app.post('/login', async (c) => {
-    const clientIp = c.req.header('x-forwarded-for')?.split(',')[0]?.trim() ?? 'local';
+    const clientIp = resolveClientIp(c, env.TRUST_PROXY);
     const limit = loginLimiter.consume(clientIp);
     if (!limit.allowed) {
       c.header('Retry-After', String(limit.retryAfterSec));
@@ -43,7 +60,7 @@ export function createAuthRoutes(db: AppDb, env: ApiEnv) {
     }
 
     loginLimiter.reset(clientIp);
-    const { token } = await createSession(db, user.id);
+    const { token } = await createSession(db, user.id, env.SESSION_SECRET);
 
     setCookie(c, SESSION_COOKIE_NAME, token, {
       httpOnly: true,
@@ -58,7 +75,7 @@ export function createAuthRoutes(db: AppDb, env: ApiEnv) {
 
   app.post('/logout', requireAdmin, async (c) => {
     const token = getCookie(c, SESSION_COOKIE_NAME);
-    await revokeSession(db, token);
+    await revokeSession(db, token, env.SESSION_SECRET);
     deleteCookie(c, SESSION_COOKIE_NAME, { path: '/' });
     return c.json({ ok: true });
   });

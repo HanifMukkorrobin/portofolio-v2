@@ -119,8 +119,8 @@
   let spineRole = $derived(resolveHeadlineAndRole(rawTagline, rawRole).role);
 
   let cvDownloadHref = $derived(
-    profile.cvPdfUrl
-      ? `${profile.cvPdfUrl}?download=1&name=${encodeURIComponent(profile.cvOriginalName || 'CV.pdf')}`
+    profile.cvPdfKey
+      ? `/api/media/${profile.cvPdfKey}?download=1&name=${encodeURIComponent(profile.cvOriginalName || 'CV.pdf')}`
       : null
   );
 

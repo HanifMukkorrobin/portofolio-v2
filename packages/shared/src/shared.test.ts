@@ -4,7 +4,8 @@ import {
   isLocale,
   projectPayloadSchema,
   resolveHeadlineAndRole,
-  resolveLocalized
+  resolveLocalized,
+  updateProfileSchema
 } from './index.js';
 
 describe('i18n helpers', () => {
@@ -106,5 +107,53 @@ describe('resolveHeadlineAndRole', () => {
       headline: 'Systems Built for Clarity',
       role: ''
     });
+  });
+});
+
+describe('media key schema validation', () => {
+  it('accepts valid category-scoped keys on profile and project payloads', () => {
+    const profileParsed = updateProfileSchema.safeParse({
+      avatarKey: 'avatar/123e4567-e89b-12d3-a456-426614174000.webp',
+      cvPdfKey: 'cv/123e4567-e89b-12d3-a456-426614174000.pdf'
+    });
+    expect(profileParsed.success).toBe(true);
+
+    const projectParsed = projectPayloadSchema.safeParse({
+      slug: 'media-valid',
+      status: 'draft',
+      coverImageKey: 'cover/123e4567-e89b-12d3-a456-426614174000.jpg',
+      galleryImageKeys: ['gallery/123e4567-e89b-12d3-a456-426614174000.png']
+    });
+    expect(projectParsed.success).toBe(true);
+  });
+
+  it('rejects traversal, wrong category, or invalid extension keys', () => {
+    expect(
+      updateProfileSchema.safeParse({ avatarKey: '../etc/passwd' }).success
+    ).toBe(false);
+    expect(
+      updateProfileSchema.safeParse({
+        avatarKey: 'cv/123e4567-e89b-12d3-a456-426614174000.pdf'
+      }).success
+    ).toBe(false);
+    expect(
+      updateProfileSchema.safeParse({
+        cvPdfKey: 'cv/123e4567-e89b-12d3-a456-426614174000.png'
+      }).success
+    ).toBe(false);
+    expect(
+      projectPayloadSchema.safeParse({
+        slug: 'bad-media',
+        status: 'draft',
+        coverImageKey: 'gallery/123e4567-e89b-12d3-a456-426614174000.jpg'
+      }).success
+    ).toBe(false);
+    expect(
+      projectPayloadSchema.safeParse({
+        slug: 'bad-gallery',
+        status: 'draft',
+        galleryImageKeys: ['gallery/../../secret.png']
+      }).success
+    ).toBe(false);
   });
 });
