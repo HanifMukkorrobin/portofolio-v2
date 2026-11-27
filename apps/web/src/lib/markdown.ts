@@ -1,5 +1,5 @@
 import { marked } from 'marked';
-import xss, { whiteList } from 'xss';
+import xss from 'xss';
 
 marked.setOptions({
   gfm: true,
@@ -7,7 +7,7 @@ marked.setOptions({
 });
 
 const safeWhiteList: Record<string, string[]> = {
-  ...whiteList,
+  ...xss.getDefaultWhiteList(),
   h1: ['id'],
   h2: ['id'],
   h3: ['id'],
