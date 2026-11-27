@@ -16,10 +16,7 @@ const envSchema = z
       .string()
       .min(16, 'SESSION_SECRET must be at least 16 characters')
       .default(DEFAULT_DEV_SESSION_SECRET),
-    TRUST_PROXY: z
-      .enum(['true', 'false'])
-      .default('false')
-      .transform((v) => v === 'true'),
+    TRUST_PROXY_HOPS: z.coerce.number().int().min(0).max(5).default(1),
     COOKIE_SECURE: z
       .enum(['true', 'false'])
       .default('false')

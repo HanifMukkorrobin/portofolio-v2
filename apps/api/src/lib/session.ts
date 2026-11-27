@@ -1,5 +1,5 @@
 import { createHmac, randomBytes } from 'node:crypto';
-import { and, eq, gt } from 'drizzle-orm';
+import { and, eq, gt, lte } from 'drizzle-orm';
 import type { AdminUser } from '@portofolio/shared';
 import type { AppDb } from '../db/index.js';
 import { adminUsers, sessions } from '../db/schema.js';
@@ -15,14 +15,25 @@ export function hashSessionToken(token: string, secret: string): string {
   return createHmac('sha256', secret).update(token).digest('hex');
 }
 
+export async function pruneExpiredSessions(db: AppDb, now: Date = new Date()): Promise<void> {
+  await db.delete(sessions).where(lte(sessions.expiresAt, now));
+}
+
+export async function revokeUserSessions(db: AppDb, userId: string): Promise<void> {
+  await db.delete(sessions).where(eq(sessions.userId, userId));
+}
+
 export async function createSession(
   db: AppDb,
   userId: string,
   secret: string
 ): Promise<{ token: string; expiresAt: Date }> {
+  const now = new Date();
+  await pruneExpiredSessions(db, now);
+
   const token = generateSessionToken();
   const tokenHash = hashSessionToken(token, secret);
-  const expiresAt = new Date(Date.now() + SESSION_TTL_MS);
+  const expiresAt = new Date(now.getTime() + SESSION_TTL_MS);
 
   await db.insert(sessions).values({
     userId,

@@ -438,8 +438,8 @@
     <div class="mt-5 grid grid-cols-1 gap-5 md:grid-cols-2">
       <MediaUploader
         category="cover"
-        label="Cover Image (JPG/PNG/WebP/AVIF, max 5MB)"
-        accept="image/jpeg,image/png,image/webp,image/avif"
+        label="Cover Image (JPG/PNG/WebP, max 5MB)"
+        accept="image/jpeg,image/png,image/webp"
         currentUrl={coverImageUrl}
         onUploaded={handleCoverUploaded}
         onRemove={handleCoverRemove}
@@ -447,8 +447,8 @@
 
       <MediaUploader
         category="gallery"
-        label="Add Gallery Image"
-        accept="image/jpeg,image/png,image/webp,image/avif"
+        label="Add Gallery Image (JPG/PNG/WebP, max 5MB)"
+        accept="image/jpeg,image/png,image/webp"
         onUploaded={handleGalleryUploaded}
       />
     </div>

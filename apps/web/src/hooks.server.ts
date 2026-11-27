@@ -10,7 +10,8 @@ const HOP_BY_HOP_REQUEST_HEADERS = new Set([
   'proxy-authenticate',
   'proxy-authorization',
   'te',
-  'trailer'
+  'trailer',
+  'x-forwarded-for'
 ]);
 
 const HOP_BY_HOP_RESPONSE_HEADERS = new Set([
@@ -41,11 +42,7 @@ async function proxyApiRequest(event: Parameters<Handle>[0]['event']): Promise<R
   try {
     const clientAddress = event.getClientAddress();
     if (clientAddress) {
-      const existingForwarded = headers.get('x-forwarded-for');
-      headers.set(
-        'x-forwarded-for',
-        existingForwarded ? `${existingForwarded}, ${clientAddress}` : clientAddress
-      );
+      headers.set('x-forwarded-for', clientAddress);
     }
   } catch {
     // Client address unavailable in non-adapter contexts

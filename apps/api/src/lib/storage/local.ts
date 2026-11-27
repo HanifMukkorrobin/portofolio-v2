@@ -8,7 +8,6 @@ const EXT_TO_MIME: Record<string, string> = {
   '.jpg': 'image/jpeg',
   '.png': 'image/png',
   '.webp': 'image/webp',
-  '.avif': 'image/avif',
   '.pdf': 'application/pdf'
 };
 

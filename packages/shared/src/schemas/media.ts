@@ -4,12 +4,7 @@ export const UPLOAD_CATEGORIES = ['avatar', 'cover', 'gallery', 'cv'] as const;
 export const uploadCategorySchema = z.enum(UPLOAD_CATEGORIES);
 export type UploadCategory = z.infer<typeof uploadCategorySchema>;
 
-export const IMAGE_MIME_TYPES = [
-  'image/jpeg',
-  'image/png',
-  'image/webp',
-  'image/avif'
-] as const;
+export const IMAGE_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const;
 
 export const CV_MIME_TYPES = ['application/pdf'] as const;
 
@@ -20,12 +15,11 @@ export const MIME_TO_EXT: Record<string, string> = {
   'image/jpeg': 'jpg',
   'image/png': 'png',
   'image/webp': 'webp',
-  'image/avif': 'avif',
   'application/pdf': 'pdf'
 };
 
 export const MEDIA_KEY_REGEX =
-  /^(?:(?:avatar|cover|gallery)\/[a-f0-9-]+\.(?:jpg|png|webp|avif)|cv\/[a-f0-9-]+\.pdf)$/;
+  /^(?:(?:avatar|cover|gallery)\/[a-f0-9-]+\.(?:jpg|png|webp)|cv\/[a-f0-9-]+\.pdf)$/;
 
 export const mediaKeySchema = z
   .string()
@@ -36,7 +30,7 @@ export function createCategoryMediaKeySchema(category: UploadCategory) {
   const pattern =
     category === 'cv'
       ? /^cv\/[a-f0-9-]+\.pdf$/
-      : new RegExp(`^${category}\\/[a-f0-9-]+\\.(?:jpg|png|webp|avif)$`);
+      : new RegExp(`^${category}\\/[a-f0-9-]+\\.(?:jpg|png|webp)$`);
   return z.string().trim().regex(pattern, `Invalid ${category} media storage key`);
 }
 

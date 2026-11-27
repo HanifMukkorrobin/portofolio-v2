@@ -502,8 +502,8 @@
     <div class="mt-5 grid grid-cols-1 gap-5 md:grid-cols-2">
       <MediaUploader
         category="avatar"
-        label="Profile Avatar (JPG/PNG/WebP/AVIF, max 5MB)"
-        accept="image/jpeg,image/png,image/webp,image/avif"
+        label="Profile Avatar (JPG/PNG/WebP, max 5MB)"
+        accept="image/jpeg,image/png,image/webp"
         currentUrl={avatarUrl}
         onUploaded={handleAvatarUploaded}
         onRemove={handleAvatarRemove}

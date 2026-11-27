@@ -12,6 +12,7 @@ import { serializeProject } from './lib/serializers.js';
 import { hashSessionToken } from './lib/session.js';
 import { LocalDiskStorageAdapter } from './lib/storage/local.js';
 import { createAdminMediaRoutes } from './routes/admin/media.js';
+import { extractClientIpFromForwardedHeader } from './routes/auth.js';
 
 describe('password hashing (scrypt)', () => {
   it('hashes and verifies matching passwords while rejecting mismatches', async () => {
@@ -156,7 +157,18 @@ describe('session token HMAC & env security', () => {
       DATABASE_URL: 'postgresql://localhost/test',
       SESSION_SECRET: 'a-very-strong-production-secret-key'
     });
-    expect(prodEnv.TRUST_PROXY).toBe(false);
+    expect(prodEnv.TRUST_PROXY_HOPS).toBe(1);
+  });
+
+  it('extracts client IP right-to-left from X-Forwarded-For to prevent client spoofing', () => {
+    // Client injected fake IP on the left; trusted 1-hop proxy appended real IP on the right
+    expect(extractClientIpFromForwardedHeader('1.1.1.1, 203.0.113.42', 1)).toBe('203.0.113.42');
+    // 2 trusted hops (e.g. CDN -> SvelteKit -> API)
+    expect(extractClientIpFromForwardedHeader('1.1.1.1, 203.0.113.42, 10.0.0.5', 2)).toBe(
+      '203.0.113.42'
+    );
+    // Disabled when TRUST_PROXY_HOPS=0
+    expect(extractClientIpFromForwardedHeader('203.0.113.42', 0)).toBeNull();
   });
 });
 

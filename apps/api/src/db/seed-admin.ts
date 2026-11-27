@@ -4,6 +4,7 @@ import { loadEnv } from '../env.js';
 import { createDb } from './index.js';
 import { adminUsers, siteProfile } from './schema.js';
 import { hashPassword } from '../lib/password.js';
+import { pruneExpiredSessions, revokeUserSessions } from '../lib/session.js';
 
 async function main() {
   const env = loadEnv();
@@ -34,7 +35,9 @@ async function main() {
         .update(adminUsers)
         .set({ passwordHash, updatedAt: new Date() })
         .where(eq(adminUsers.id, existing[0].id));
-      console.log(`Updated existing admin user: ${email}`);
+      await revokeUserSessions(db, existing[0].id);
+      await pruneExpiredSessions(db);
+      console.log(`Updated existing admin user and revoked active sessions: ${email}`);
     } else {
       await db.insert(adminUsers).values({ email, passwordHash });
       console.log(`Created admin user: ${email}`);

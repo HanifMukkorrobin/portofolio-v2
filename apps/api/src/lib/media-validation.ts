@@ -38,18 +38,6 @@ export function detectMediaMimeType(bytes: Uint8Array): string | null {
     return 'image/webp';
   }
 
-  // AVIF: ISO Base Media File Format ftyp box containing avif/avis brand
-  if (bytes.byteLength >= 12 && asciiSlice(bytes, 4, 8) === 'ftyp') {
-    const boxSize = Math.min(
-      bytes.byteLength,
-      ((bytes[0]! << 24) | (bytes[1]! << 16) | (bytes[2]! << 8) | bytes[3]!) >>> 0 || 32
-    );
-    const brands = asciiSlice(bytes, 8, Math.max(12, Math.min(boxSize, 64)));
-    if (brands.includes('avif') || brands.includes('avis')) {
-      return 'image/avif';
-    }
-  }
-
   // PDF: %PDF-
   if (bytes.byteLength >= 5 && asciiSlice(bytes, 0, 5) === '%PDF-') {
     return 'application/pdf';

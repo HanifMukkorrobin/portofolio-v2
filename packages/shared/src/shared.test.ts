@@ -155,5 +155,10 @@ describe('media key schema validation', () => {
         galleryImageKeys: ['gallery/../../secret.png']
       }).success
     ).toBe(false);
+    expect(
+      updateProfileSchema.safeParse({
+        avatarKey: 'avatar/123e4567-e89b-12d3-a456-426614174000.avif'
+      }).success
+    ).toBe(false);
   });
 });

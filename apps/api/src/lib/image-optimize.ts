@@ -33,9 +33,6 @@ export async function optimizeUploadedImage(input: {
     case 'image/webp':
       optimized = await base.webp({ quality: 82 }).toBuffer();
       break;
-    case 'image/avif':
-      optimized = await base.avif({ quality: 68 }).toBuffer();
-      break;
     case 'image/png':
       optimized = await base.png({ compressionLevel: 9, adaptiveFiltering: true }).toBuffer();
       break;

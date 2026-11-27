@@ -16,11 +16,30 @@ import {
 } from '../lib/session.js';
 import { createRequireAdmin, type AuthEnv } from '../middleware/auth.js';
 
-function resolveClientIp(c: Context, trustProxy: boolean): string {
-  if (trustProxy) {
-    const forwarded = c.req.header('x-forwarded-for')?.split(',')[0]?.trim();
-    if (forwarded) return forwarded;
-  }
+/**
+ * Extracts the client IP from X-Forwarded-For using right-to-left hop counting
+ * so spoofed left-side values injected by clients cannot bypass rate limiting.
+ */
+export function extractClientIpFromForwardedHeader(
+  headerValue: string | undefined,
+  trustProxyHops: number
+): string | null {
+  if (trustProxyHops <= 0 || !headerValue) return null;
+  const ips = headerValue
+    .split(',')
+    .map((part) => part.trim())
+    .filter(Boolean);
+  if (ips.length === 0) return null;
+  const index = Math.max(0, ips.length - trustProxyHops);
+  return ips[index] ?? null;
+}
+
+function resolveClientIp(c: Context, trustProxyHops: number): string {
+  const forwardedIp = extractClientIpFromForwardedHeader(
+    c.req.header('x-forwarded-for'),
+    trustProxyHops
+  );
+  if (forwardedIp) return forwardedIp;
 
   try {
     const info = getConnInfo(c);
@@ -38,7 +57,7 @@ export function createAuthRoutes(db: AppDb, env: ApiEnv) {
   const loginLimiter = createRateLimiter(10, 15 * 60 * 1000);
 
   app.post('/login', async (c) => {
-    const clientIp = resolveClientIp(c, env.TRUST_PROXY);
+    const clientIp = resolveClientIp(c, env.TRUST_PROXY_HOPS);
     const limit = loginLimiter.consume(clientIp);
     if (!limit.allowed) {
       c.header('Retry-After', String(limit.retryAfterSec));
